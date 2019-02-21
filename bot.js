@@ -127,6 +127,38 @@ if (!process.env.clientId || !process.env.clientSecret) {
     require("./skills/" + file)(controller);
   });
 
+  var timer_running = false;
+  var CronJob = require('cron').CronJob;
+  // ==================================================================================
+  
+  async function getUsers(bot) {
+    bot.api.users.list({}, (err,res) => {
+      console.log(res);
+    });
+  }
+  
+  async function startCron(bot, userId) {
+    new CronJob('0/7 * * * * *', function() {
+      bot.api.im.open({
+            user: userId
+        }, (err, res) => {
+            if (err) {
+                bot.botkit.log('Failed to open IM with user', err)
+            }
+            console.log(res);
+            bot.startConversation({
+                user: userId,
+                channel: res.channel.id,
+                text: 'WOWZA... 1....2'
+            }, (err, convo) => {
+                convo.say('This is the shit')
+            });
+        })
+      console.log('You will see this message every second');
+    }, null, true, 'America/Los_Angeles');
+  }
+  
+  
   // This captures and evaluates any message sent to the bot as a DM
   // or sent to the bot in the form "@bot message" and passes it to
   // Botkit CMS to evaluate for trigger words and patterns.
@@ -135,22 +167,16 @@ if (!process.env.clientId || !process.env.clientSecret) {
   // controller.studio.before, controller.studio.after and controller.studio.validate
   if (process.env.studio_token) {
       controller.on('direct_message,direct_mention,mention', function(bot, message) {
-          controller.studio.runTrigger(bot, message.text, message.user, message.channel, message).then(function(convo) {
-              if (!convo) {
-                  // no trigger was matched
-                  // If you want your bot to respond to every message,
-                  // define a 'fallback' script in Botkit CMS
-                  // and uncomment the line below.
-                  // controller.studio.run(bot, 'fallback', message.user, message.channel);
-              } else {
-                  // set variables here that are needed for EVERY script
-                  // use controller.studio.before('script') to set variables specific to a script
-                  convo.setVar('current_time', new Date());
-              }
-          }).catch(function(err) {
-              bot.reply(message, 'I experienced an error with a request to Botkit CMS: ' + err);
-              debug('Botkit CMS: ', err);
-          });
+        bot.reply(message, 'got it: ' + message.text);
+
+        if (message.text.includes('start_timer')){
+          bot.reply(message, 'Started the cron job');
+
+        }
+        if (message.text.includes('timer_status')){
+        bot.reply(message, 'timer is: ' + timer_running);
+        }
+
       });
   } else {
       console.log('~~~~~~~~~~');
